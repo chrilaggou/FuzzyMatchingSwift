@@ -34,7 +34,7 @@ public enum FuzzyMatchingOptionsDefaultValues : Double {
 }
 
 /**
- Allows for fuzzy matching to happen on all String elements in an Array.
+ Sorts the String based Array by fuzzy matching the pattern parameter against all elements in the Array.
  */
 extension _ArrayType where Generator.Element == String {
 
@@ -44,34 +44,41 @@ extension _ArrayType where Generator.Element == String {
    - parameter pattern:  The pattern to search for.
    - parameter loc:  The index in the element from which to search.
    - parameter distance:  Determines how close the match must be to the fuzzy location. See `loc` parameter.
-   - returns: An ordered set of Strings based on whichever element matches closest to the `pattern` parameter.
    */
-  public func sortedByFuzzyMatchPattern(pattern:String, loc:Int? = 0, distance:Double? = 1000.0) -> [String] {
-    var sortedArray = [String]()
+  public func sortByFuzzyMatchPattern(pattern:String, loc:Int? = 0, distance:Double? = 1000.0) {
+    var sortedIndices = [String: Int]()
     for element in 10.stride(to: 1, by: -1) {
       // stop if we've already found all there is to find
-      if sortedArray.count == count { break }
+      if sortedIndices.count == count { break }
       // otherwise, proceed to the rest of the values
       let threshold:Double = Double(element / 10)
       var options = [FuzzyMatchingOptionsParams.threshold.rawValue : threshold]
       if distance != nil {
         options[FuzzyMatchingOptionsParams.distance.rawValue] = distance
       }
-      for value in self {
-        if !sortedArray.contains(value) {
-          if let _ = value.fuzzyMatchPattern(pattern, loc: loc, options: options) {
-            sortedArray.append(value)
-          }
+      for (index, value) in self.enumerate() {
+        // don't bother with this if we've already evaluated it
+        guard (sortedIndices[value] == nil) else { continue }
+        // see whether we can get a match for this value with the given threshold/distance pair
+        if let _ = value.fuzzyMatchPattern(pattern, loc: loc, options: options) {
+          sortedIndices[value] = index
         }
       }
     }
-    // make sure that the array we return to the user has ALL elements which is in the initial array
-    for value in self {
-      if !sortedArray.contains(value) {
-        sortedArray.append(value)
-      }
+    // make sure we have ALL elements in the sortedIndices before trying to sort
+    for (index, value) in self.enumerate() {
+      guard (sortedIndices[value] == nil) else { continue }
+      sortedIndices[value] = index
     }
-    return sortedArray
+    // now, we can sort
+    let s = self.sort { (one, two) -> Bool in
+      let a = sortedIndices[one]
+      let b = sortedIndices[two]
+      return a <= b
+    }
+    if s.count == 10 {
+      
+    }
   }
 }
 
